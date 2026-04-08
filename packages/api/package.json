@@ -1,0 +1,20 @@
+{
+  "name": "@lumens-news/api",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "1.2.4",
+    "@lumens-news/types": "workspace:*",
+    "@scalar/hono-api-reference": "0.10.6",
+    "@scalar/openapi-to-markdown": "0.5.1",
+    "hono": "4.12.12"
+  },
+  "devDependencies": {
+    "wrangler": "4.81.0"
+  }
+}
