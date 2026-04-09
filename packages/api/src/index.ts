@@ -4,6 +4,7 @@ import { createMarkdownFromOpenApi } from "@scalar/openapi-to-markdown";
 
 import { beatsHandlers } from "./handlers/beats";
 import { signalsHandlers } from "./handlers/signals";
+import { internalServerError } from "./utils/error";
 
 const app = new OpenAPIHono();
 
@@ -29,5 +30,11 @@ app
   }))
   .get("/docs", Scalar({ url: "/openapi.json" }))
   .get("/llms.txt", async (c) => c.text(await createMarkdownFromOpenApi(JSON.stringify(openApiDoc))));
+
+app.onError(async (err, c) => {
+  console.error(err);
+
+  return c.json(internalServerError, 500);
+});
 
 export default app;
