@@ -8,7 +8,7 @@ export const resolveNotFoundErrorSchema = <TResource extends string>(resource: T
 export type NotFoundError = z.infer<ReturnType<typeof resolveNotFoundErrorSchema>>;
 
 export const internalServerErrorCode = "internal_server_error";
-export const internalServerErrorMessage = "Unexpected error occured";
+export const internalServerErrorMessage = "Unexpected error occurred";
 
 export const internalServerErrorSchema = z
   .object({

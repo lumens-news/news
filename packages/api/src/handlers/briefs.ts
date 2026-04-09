@@ -32,7 +32,7 @@ const getBrief = createRoute({
         "application/json": {
           schema: resolveNotFoundErrorSchema("brief").default({
             error: "brief_not_found",
-            message: "Brief with id X was not found",
+            message: "Brief with date YYYY-MM-DD was not found",
           }),
         },
       },
@@ -70,6 +70,6 @@ const compileBrief = createRoute({
   tags: [brief],
 });
 
-briefsHandlers.openapi(compileBrief, (c) => c.json(undefined, 201));
+briefsHandlers.openapi(compileBrief, (c) => c.body(null, 201));
 
 export { briefsHandlers };
