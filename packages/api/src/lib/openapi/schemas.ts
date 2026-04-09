@@ -8,7 +8,7 @@ export const addressSchema = z.string().openapi("Address");
 
 export const signalSourceSchema = z
   .object({
-    label: z.string(),
+    title: z.string(),
     url: z.url(),
   })
   .openapi("SignalSource");

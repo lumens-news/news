@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const signalSourceSchema = z.object({
-  label: z.string(),
+  title: z.string(),
   url: z.url(),
 });
 export type SignalSource = z.infer<typeof signalSourceSchema>;
