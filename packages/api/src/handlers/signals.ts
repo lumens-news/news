@@ -1,15 +1,13 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 
-import type { ApprovedSignal } from "@lumens-news/types";
-import { beatEnum } from "@lumens-news/types";
-
+import { beats } from "../config/beats";
 import { signalSchema } from "../lib/openapi/schemas";
 import { signal } from "../lib/openapi/tags";
 
 const signalsHandlers = new OpenAPIHono();
 
 const getSignalsRequestQuerySchema = z.object({
-  beat: beatEnum.openapi({ description: "Filter by beat" }),
+  beat: z.enum(beats).openapi({ description: "Filter by beat" }).optional(),
   page: z.int().min(1).default(1).openapi({ description: "Page" }),
   limit: z.int().min(1).max(100).default(50).openapi({ description: "Limit per page" }),
 });
@@ -40,13 +38,13 @@ signalsHandlers.openapi(getSignals, async (c) => {
 });
 
 const getSignalRequestParamSchema = z.object({
-  signalId: z.string(),
+  id: z.string(),
 });
 const getSignalResponseSchema = signalSchema;
 
 const getSignal = createRoute({
   method: "get",
-  path: "/{signalId}",
+  path: "/{id}",
   description: "Get signal by id",
   request: {
     params: getSignalRequestParamSchema,
@@ -65,7 +63,7 @@ const getSignal = createRoute({
 });
 
 signalsHandlers.openapi(getSignal, async (c) => {
-  return c.json({} as ApprovedSignal, 200);
+  return c.json({} as z.infer<typeof getSignalResponseSchema>, 200);
 });
 
 export { signalsHandlers };
