@@ -3,12 +3,13 @@ import { Scalar } from "@scalar/hono-api-reference";
 import { createMarkdownFromOpenApi } from "@scalar/openapi-to-markdown";
 
 import { beatsHandlers } from "./handlers/beats";
+import { briefsHandlers } from "./handlers/briefs";
 import { signalsHandlers } from "./handlers/signals";
 import { internalServerError } from "./utils/error";
 
 const app = new OpenAPIHono();
 
-app.route("/api/beats", beatsHandlers).route("/api/signals", signalsHandlers);
+app.route("/api/beats", beatsHandlers).route("/api/briefs", briefsHandlers).route("/api/signals", signalsHandlers);
 
 const openApiDoc = app.getOpenAPI31Document({
   openapi: "3.1.1",
@@ -30,6 +31,16 @@ app
   }))
   .get("/docs", Scalar({ url: "/openapi.json" }))
   .get("/llms.txt", async (c) => c.text(await createMarkdownFromOpenApi(JSON.stringify(openApiDoc))));
+
+app.get("/", (c) =>
+  c.json(
+    {
+      title: "lumens.news API",
+      version: "1.0.0",
+    },
+    200
+  )
+);
 
 app.onError(async (err, c) => {
   console.error(err);
