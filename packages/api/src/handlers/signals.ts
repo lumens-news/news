@@ -1,6 +1,7 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 
 import { beats } from "../config/beats";
+import { resolveNotFoundErrorSchema } from "../lib/openapi/errors";
 import { signalSchema } from "../lib/openapi/schemas";
 import { signal } from "../lib/openapi/tags";
 
@@ -38,7 +39,7 @@ signalsHandlers.openapi(getSignals, async (c) => {
 });
 
 const getSignalRequestParamSchema = z.object({
-  id: z.string(),
+  id: z.uuidv7(),
 });
 const getSignalResponseSchema = signalSchema;
 
@@ -57,6 +58,17 @@ const getSignal = createRoute({
         },
       },
       description: "Signal detail",
+    },
+    404: {
+      content: {
+        "application/json": {
+          schema: resolveNotFoundErrorSchema("signal").default({
+            error: "signal_not_found",
+            message: "Signal with id X was not found",
+          }),
+        },
+      },
+      description: "Signal not found",
     },
   },
   tags: [signal],
