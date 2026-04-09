@@ -3,7 +3,7 @@
   "name": "lumens-news-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-04-08",
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"],
   // "vars": {
   //   "MY_VAR": "my-variable"
   // },
@@ -29,8 +29,8 @@
   // "ai": {
   //   "binding": "AI"
   // },
-  // "observability": {
-  //   "enabled": true,
-  //   "head_sampling_rate": 1
-  // }
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  }
 }
