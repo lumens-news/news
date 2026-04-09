@@ -8,8 +8,8 @@ export const signalSourceSchema = z.object({
 });
 export type SignalSource = z.infer<typeof signalSourceSchema>;
 
-export const signalStatus = ["pending", "approved", "rejected"] as const;
-export const signalStatusEnum = z.enum(signalStatus);
+export const signalStatuses = ["pending", "approved", "rejected"] as const;
+export const signalStatusEnum = z.enum(signalStatuses);
 export type SignalStatus = z.infer<typeof signalStatusEnum>;
 
 export const baseSignalSchema = z.object({
