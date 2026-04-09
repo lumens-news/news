@@ -6,6 +6,8 @@ import { beat } from "../lib/openapi/tags";
 
 const beatsHandlers = new OpenAPIHono();
 
+/* ========== GET /api/beats ========== */
+
 const getBeatsResponseSchema = z.array(beatSchema).openapi({ example: beats });
 
 const getBeats = createRoute({
@@ -26,5 +28,7 @@ const getBeats = createRoute({
 });
 
 beatsHandlers.openapi(getBeats, (c) => c.json(Array.from(beats), 200));
+
+/* ======================================== */
 
 export { beatsHandlers };

@@ -6,6 +6,7 @@ import { brief } from "../lib/openapi/tags";
 
 const briefsHandlers = new OpenAPIHono();
 
+/* ========== GET /api/briefs/:date ========== */
 const getBriefRequestParamSchema = z.object({
   date: z.iso.date().openapi({ description: "Brief date, format: YYYY-MM-DD" }),
 });
@@ -44,6 +45,9 @@ const getBrief = createRoute({
 
 briefsHandlers.openapi(getBrief, (c) => c.json({} as z.infer<typeof getBriefResponseSchema>, 200));
 
+/* ======================================== */
+
+/* ========== POST /api/briefs/compile ========== */
 const compileBriefRequestBodySchema = z.object({
   date: z.iso.date().openapi({ description: "Brief date, format: YYYY-MM-DD" }),
   signalIds: z.array(z.uuidv7()),
@@ -51,7 +55,7 @@ const compileBriefRequestBodySchema = z.object({
 
 const compileBrief = createRoute({
   method: "post",
-  path: "/",
+  path: "/compile",
   description: "Compile brief",
   request: {
     body: {
@@ -71,5 +75,7 @@ const compileBrief = createRoute({
 });
 
 briefsHandlers.openapi(compileBrief, (c) => c.body(null, 201));
+
+/* ======================================== */
 
 export { briefsHandlers };
