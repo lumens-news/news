@@ -1,6 +1,7 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 import { createMarkdownFromOpenApi } from "@scalar/openapi-to-markdown";
+import { HTTPException } from "hono/http-exception";
 
 import { beatsHandlers } from "./handlers/beats";
 import { briefsHandlers } from "./handlers/briefs";
@@ -43,6 +44,10 @@ app.get("/", (c) =>
 );
 
 app.onError(async (err, c) => {
+  if (err instanceof HTTPException) {
+    return err.getResponse();
+  }
+
   console.error(err);
 
   return c.json(internalServerError, 500);
