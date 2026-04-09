@@ -7,6 +7,7 @@ import { signal } from "../lib/openapi/tags";
 
 const signalsHandlers = new OpenAPIHono();
 
+/* ========== GET /api/signals ========== */
 const getSignalsRequestQuerySchema = z.object({
   beat: z.enum(beats).openapi({ description: "Filter by beat" }).optional(),
   page: z.int().min(1).default(1).openapi({ description: "Page" }),
@@ -38,6 +39,9 @@ signalsHandlers.openapi(getSignals, async (c) => {
   return c.json([], 200);
 });
 
+/* ======================================== */
+
+/* ========== GET /api/signals/:id ========== */
 const getSignalRequestParamSchema = z.object({
   id: z.uuidv7(),
 });
@@ -77,5 +81,35 @@ const getSignal = createRoute({
 signalsHandlers.openapi(getSignal, async (c) => {
   return c.json({} as z.infer<typeof getSignalResponseSchema>, 200);
 });
+
+/* ======================================== */
+
+/* ========== POST /api/signals ========== */
+const fileSignalRequestBodySchema = z.object({});
+
+const fileSignal = createRoute({
+  method: "post",
+  path: "/",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: fileSignalRequestBodySchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: "Signal filed",
+    },
+  },
+});
+
+signalsHandlers.openapi(fileSignal, async (c) => {
+  return c.body(null, 201);
+});
+
+/* ======================================== */
 
 export { signalsHandlers };
