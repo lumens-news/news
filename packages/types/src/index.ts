@@ -1,3 +1,2 @@
-export * from "./beats";
-export * from "./beats";
+export * from "./briefs";
 export * from "./signals";

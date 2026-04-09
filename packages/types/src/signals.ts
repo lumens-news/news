@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { beatEnum } from "./beats.js";
-
 export const signalSourceSchema = z.object({
   label: z.string(),
   url: z.url(),
@@ -15,9 +13,9 @@ export type SignalStatus = z.infer<typeof signalStatusEnum>;
 export const baseSignalSchema = z.object({
   id: z.string(),
 
-  address: z.string(),
+  correspondent: z.string(),
 
-  beat: beatEnum,
+  beat: z.string(),
   headline: z.string(),
   body: z.string(),
 
@@ -25,7 +23,6 @@ export const baseSignalSchema = z.object({
   sources: z.array(signalSourceSchema),
 
   createdAt: z.date(),
-  updatedAt: z.date(),
 });
 export type BaseSignal = z.infer<typeof baseSignalSchema>;
 
@@ -36,7 +33,6 @@ export type PendingSignal = z.infer<typeof pendingSignalSchema>;
 
 export const approvedSignalSchema = baseSignalSchema.extend({
   status: z.literal("approved"),
-  briefId: z.string(),
 });
 export type ApprovedSignal = z.infer<typeof approvedSignalSchema>;
 

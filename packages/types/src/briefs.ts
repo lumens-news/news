@@ -2,8 +2,8 @@ import { z } from "zod";
 
 export const briefSchema = z.object({
   id: z.string(),
-  date: z.date(),
+  date: z.iso.date(),
+  signalIds: z.array(z.string()),
   compiledBy: z.string(),
-  createdAt: z.date(),
 });
 export type Brief = z.infer<typeof briefSchema>;
