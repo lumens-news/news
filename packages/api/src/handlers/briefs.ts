@@ -1,9 +1,13 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
 
 import type { Env } from "../config/env";
+import * as tables from "../lib/db";
 import { resolveNotFoundErrorSchema } from "../lib/openapi/errors";
 import { briefSchema, idSchema } from "../lib/openapi/schemas";
 import { brief } from "../lib/openapi/tags";
+import { buildError } from "../utils/error";
 
 const briefsHandlers = new OpenAPIHono<Env>();
 
@@ -44,7 +48,41 @@ const getBrief = createRoute({
   tags: [brief],
 });
 
-briefsHandlers.openapi(getBrief, (c) => c.json({} as z.infer<typeof getBriefResponseSchema>, 200));
+briefsHandlers.openapi(getBrief, async (c) => {
+  const { date } = c.req.valid("param");
+
+  const db = drizzle(c.env.LUMENS_DB);
+
+  const [brief, ...rest] = await db
+    .select({
+      id: tables.briefs.id,
+      date: tables.briefs.date,
+      compiledBy: tables.briefs.compiledBy,
+      signal: {
+        id: tables.signals.id,
+        correspondent: tables.signals.correspondent,
+        beat: tables.signals.beat,
+        headline: tables.signals.headline,
+        body: tables.signals.body,
+        tags: tables.signals.tags,
+        sources: tables.signals.sources,
+        approvedAt: tables.signals.approvedAt,
+      },
+    })
+    .from(tables.briefs)
+    .innerJoin(tables.briefSignals, eq(tables.briefSignals.briefId, tables.briefs.id))
+    .innerJoin(tables.signals, eq(tables.signals.id, tables.briefSignals.signalId))
+    .where(eq(tables.briefs.date, new Date(date)));
+
+  if (!brief) return c.json(buildError("brief_not_found", `Brief with date ${date} not found`), 404);
+
+  // biome-ignore lint/style/noNonNullAssertion: approvedAt are always available since briefs only contain approved signals
+  const signals = [brief, ...rest].map((r) => ({ ...r.signal, publishedAt: r.signal.approvedAt!.toISOString() }));
+
+  const getBriefResponse = getBriefResponseSchema.parse({ ...brief, signals });
+
+  return c.json(getBriefResponse, 200);
+});
 
 /* ======================================== */
 
@@ -75,7 +113,9 @@ const compileBrief = createRoute({
   tags: [brief],
 });
 
-briefsHandlers.openapi(compileBrief, (c) => c.body(null, 201));
+briefsHandlers.openapi(compileBrief, async (c) => {
+  return c.body(null, 201);
+});
 
 /* ======================================== */
 
