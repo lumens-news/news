@@ -8,6 +8,13 @@
       "when": 1775823924092,
       "tag": "0000_initial-db-setup",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1775849903972,
+      "tag": "0001_brief_signals_primary_key_not_null",
+      "breakpoints": true
     }
   ]
 }

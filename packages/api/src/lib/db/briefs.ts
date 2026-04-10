@@ -27,8 +27,12 @@ export const briefs = sqliteTable(
 export const briefSignals = sqliteTable(
   "brief_signals",
   {
-    briefId: text("brief_id").references(() => briefs.id),
-    signalId: text("signal_id").references(() => signals.id),
+    briefId: text("brief_id")
+      .notNull()
+      .references(() => briefs.id),
+    signalId: text("signal_id")
+      .notNull()
+      .references(() => signals.id),
   },
   (t) => [primaryKey({ name: "brief_signal_primary_key", columns: [t.briefId, t.signalId] })]
 );
