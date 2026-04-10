@@ -1,11 +1,10 @@
 import { z } from "@hono/zod-openapi";
 
-export const buildErrorSchema = <TError extends string>(errorCode: TError) =>
+export const buildErrorSchema = <TError extends [string, ...string[]]>(...errorCode: TError) =>
   z.object({
-    error: z.literal(errorCode),
+    error: z.enum(errorCode),
     message: z.string(),
   });
-export type Error = z.infer<ReturnType<typeof buildErrorSchema>>;
 
 export const buildNotFoundErrorSchema = <TResource extends string>(resource: TResource) =>
   z.object({
@@ -13,6 +12,12 @@ export const buildNotFoundErrorSchema = <TResource extends string>(resource: TRe
     message: z.string(),
   });
 export type NotFoundError = z.infer<ReturnType<typeof buildNotFoundErrorSchema>>;
+
+export const unauthorizedErrorCode = "unauthorized";
+export const unauthorizedErrorDefaultMessage = "No authorization";
+
+export const forbiddenErrorCode = "forbidden";
+export const forbiddenErrorDefaultMessage = "No access";
 
 export const internalServerErrorCode = "internal_server_error";
 export const internalServerErrorMessage = "Unexpected error occurred";
