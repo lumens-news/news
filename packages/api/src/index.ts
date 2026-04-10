@@ -3,12 +3,13 @@ import { Scalar } from "@scalar/hono-api-reference";
 import { createMarkdownFromOpenApi } from "@scalar/openapi-to-markdown";
 import { HTTPException } from "hono/http-exception";
 
+import type { Env } from "./config/env";
 import { beatsHandlers } from "./handlers/beats";
 import { briefsHandlers } from "./handlers/briefs";
 import { signalsHandlers } from "./handlers/signals";
 import { internalServerError } from "./utils/error";
 
-const app = new OpenAPIHono();
+const app = new OpenAPIHono<Env>();
 
 app.route("/api/beats", beatsHandlers).route("/api/briefs", briefsHandlers).route("/api/signals", signalsHandlers);
 
@@ -50,7 +51,7 @@ app.onError(async (err, c) => {
 
   console.error(err);
 
-  return c.json(internalServerError, 500);
+  return c.json(internalServerError(), 500);
 });
 
 export default app;

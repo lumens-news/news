@@ -1,11 +1,18 @@
 import { z } from "@hono/zod-openapi";
 
-export const resolveNotFoundErrorSchema = <TResource extends string>(resource: TResource) =>
+export const buildErrorSchema = <TError extends string>(errorCode: TError) =>
+  z.object({
+    error: z.literal(errorCode),
+    message: z.string(),
+  });
+export type Error = z.infer<ReturnType<typeof buildErrorSchema>>;
+
+export const buildNotFoundErrorSchema = <TResource extends string>(resource: TResource) =>
   z.object({
     error: z.templateLiteral([z.literal(resource), z.literal("_not_found")]),
     message: z.string(),
   });
-export type NotFoundError = z.infer<ReturnType<typeof resolveNotFoundErrorSchema>>;
+export type NotFoundError = z.infer<ReturnType<typeof buildNotFoundErrorSchema>>;
 
 export const internalServerErrorCode = "internal_server_error";
 export const internalServerErrorMessage = "Unexpected error occurred";

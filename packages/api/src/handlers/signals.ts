@@ -1,11 +1,16 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/d1";
 
+import type { Env } from "../config/env";
 import { beats } from "../config/beats";
-import { resolveNotFoundErrorSchema } from "../lib/openapi/errors";
-import { signalSchema } from "../lib/openapi/schemas";
+import * as tables from "../lib/db";
+import { buildNotFoundErrorSchema } from "../lib/openapi/errors";
+import { addressSchema, beatSchema, idSchema, signalSchema, signalSourceSchema } from "../lib/openapi/schemas";
 import { signal } from "../lib/openapi/tags";
+import { buildError, internalServerError } from "../utils/error";
 
-const signalsHandlers = new OpenAPIHono();
+const signalsHandlers = new OpenAPIHono<Env>();
 
 /* ========== GET /api/signals ========== */
 const getSignalsRequestQuerySchema = z.object({
@@ -36,14 +41,43 @@ const getSignals = createRoute({
 });
 
 signalsHandlers.openapi(getSignals, async (c) => {
-  return c.json([], 200);
+  const { beat, page, limit } = c.req.valid("query");
+
+  const db = drizzle(c.env.LUMENS_DB);
+
+  const signals = await db
+    .select({
+      id: tables.signals.id,
+      correspondent: tables.signals.correspondent,
+      beat: tables.signals.beat,
+      headline: tables.signals.headline,
+      body: tables.signals.body,
+      tags: tables.signals.tags,
+      sources: tables.signals.sources,
+      approvedAt: tables.signals.approvedAt,
+    })
+    .from(tables.signals)
+    .where(and(beat ? eq(tables.signals.beat, beat) : undefined, eq(tables.signals.status, "approved"), isNotNull(tables.signals.approvedAt)))
+    .orderBy(desc(tables.signals.approvedAt), desc(tables.signals.id))
+    .limit(limit)
+    .offset((page - 1) * limit);
+
+  const getSignalsResponse = getSignalsResponseSchema.parse(
+    signals.map((signal) => ({
+      ...signal,
+      // biome-ignore lint/style/noNonNullAssertion: sql enforce non-nullable approvedAt
+      publishedAt: signal.approvedAt!.toISOString(),
+    }))
+  );
+
+  return c.json(getSignalsResponse, 200);
 });
 
 /* ======================================== */
 
 /* ========== GET /api/signals/:id ========== */
 const getSignalRequestParamSchema = z.object({
-  id: z.uuidv7(),
+  id: idSchema,
 });
 const getSignalResponseSchema = signalSchema;
 
@@ -66,7 +100,7 @@ const getSignal = createRoute({
     404: {
       content: {
         "application/json": {
-          schema: resolveNotFoundErrorSchema("signal").default({
+          schema: buildNotFoundErrorSchema("signal").default({
             error: "signal_not_found",
             message: "Signal with id X was not found",
           }),
@@ -79,18 +113,50 @@ const getSignal = createRoute({
 });
 
 signalsHandlers.openapi(getSignal, async (c) => {
-  return c.json({} as z.infer<typeof getSignalResponseSchema>, 200);
+  const { id } = c.req.valid("param");
+
+  const db = drizzle(c.env.LUMENS_DB);
+
+  const [signal] = await db
+    .select({
+      id: tables.signals.id,
+      correspondent: tables.signals.correspondent,
+      beat: tables.signals.beat,
+      headline: tables.signals.headline,
+      body: tables.signals.body,
+      tags: tables.signals.tags,
+      sources: tables.signals.sources,
+      approvedAt: tables.signals.approvedAt,
+    })
+    .from(tables.signals)
+    .where(and(eq(tables.signals.id, id), eq(tables.signals.status, "approved"), isNotNull(tables.signals.approvedAt)));
+
+  if (!signal?.approvedAt) return c.json(buildError("signal_not_found", `Signal with id ${id} not found`), 404);
+
+  const getSignalResponse = getSignalResponseSchema.parse({ ...signal, publishedAt: signal.approvedAt.toISOString() });
+
+  return c.json(getSignalResponse, 200);
 });
 
 /* ======================================== */
 
 /* ========== POST /api/signals ========== */
-const fileSignalRequestBodySchema = z.object({});
+const fileSignalRequestHeaderSchema = z.object({
+  "x-stellar-address": addressSchema,
+});
+const fileSignalRequestBodySchema = z.object({
+  beat: beatSchema,
+  headline: z.string().min(6).max(300),
+  body: z.string().min(30).max(2048),
+  tags: z.array(z.string()).max(12),
+  sources: z.array(signalSourceSchema).max(100),
+});
 
 const fileSignal = createRoute({
   method: "post",
   path: "/",
   request: {
+    headers: fileSignalRequestHeaderSchema,
     body: {
       content: {
         "application/json": {
@@ -104,9 +170,30 @@ const fileSignal = createRoute({
       description: "Signal filed",
     },
   },
+  tags: [signal],
 });
 
 signalsHandlers.openapi(fileSignal, async (c) => {
+  const { "x-stellar-address": address } = c.req.valid("header");
+  const { beat, headline, body, tags, sources } = c.req.valid("json");
+
+  const db = drizzle(c.env.LUMENS_DB);
+
+  const result = await db.insert(tables.signals).values({
+    correspondent: address,
+    beat,
+    headline,
+    body,
+    tags,
+    sources,
+  });
+
+  if (!result.success) {
+    console.error("Failed to insert signal:", result);
+
+    return c.json(internalServerError(), 500);
+  }
+
   return c.body(null, 201);
 });
 

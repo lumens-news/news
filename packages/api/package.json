@@ -12,9 +12,13 @@
     "@lumens-news/types": "workspace:*",
     "@scalar/hono-api-reference": "0.10.6",
     "@scalar/openapi-to-markdown": "0.5.1",
-    "hono": "4.12.12"
+    "drizzle-orm": "0.45.2",
+    "hono": "4.12.12",
+    "uuid": "catalog:"
   },
   "devDependencies": {
+    "@total-typescript/ts-reset": "catalog:",
+    "drizzle-kit": "0.31.10",
     "wrangler": "4.81.0"
   }
 }
