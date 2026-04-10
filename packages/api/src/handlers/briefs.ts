@@ -160,8 +160,8 @@ briefsHandlers.openapi(compileBrief, async (c) => {
   const briefId = v7();
 
   const batchResult = await db.batch([
-    db.insert(tables.briefs).values({ id: briefId, date: resolvedDate, compiledBy: address }),
-    ...signals.map(({ id: signalId }) => db.insert(tables.briefSignals).values({ briefId, signalId })),
+    db.insert(tables.briefs).values({ id: briefId, date: resolvedDate, compiledBy: address }).onConflictDoNothing(),
+    ...signals.map(({ id: signalId }) => db.insert(tables.briefSignals).values({ briefId, signalId }).onConflictDoNothing()),
   ]);
 
   return batchResult.every((r) => r.success) ? c.body(null, 201) : c.json(internalServerError(), 500);
