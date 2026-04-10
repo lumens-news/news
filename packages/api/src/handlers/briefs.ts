@@ -151,11 +151,14 @@ briefsHandlers.openapi(compileBrief, async (c) => {
   const [existingBrief] = await db.select().from(tables.briefs).where(eq(tables.briefs.date, resolvedDate));
   if (existingBrief) return c.json(buildError("brief_already_compiled", `Brief date ${date} has been compiled`), 409);
 
+  const requestedSignalIds = [...new Set(signalIds)];
+
   const signals = await db
     .select({ id: tables.signals.id })
     .from(tables.signals)
-    .where(and(inArray(tables.signals.id, signalIds), eq(tables.signals.status, "approved")));
-  if (!signals.length) return c.json(buildError("invalid_signal_ids", "Invalid signal ids provided"), 400);
+    .where(and(inArray(tables.signals.id, requestedSignalIds), eq(tables.signals.status, "approved")));
+
+  if (signals.length !== requestedSignalIds.length) return c.json(buildError("invalid_signal_ids", "Invalid signal ids provided"), 400);
 
   const briefId = v7();
 
