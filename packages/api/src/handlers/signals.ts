@@ -62,17 +62,12 @@ signalsHandlers.openapi(getSignals, async (c) => {
     .limit(limit)
     .offset((page - 1) * limit);
 
-  const getSignalsResponse = signals.reduce(
-    (acc, signal) => {
-      if (!signal.approvedAt) return acc;
-
-      const parseSignalResult = signalSchema.safeParse({ ...signal, publishedAt: signal.approvedAt.toISOString() });
-      if (!parseSignalResult.success) return acc;
-
-      acc.push(parseSignalResult.data);
-      return acc;
-    },
-    [] as z.infer<typeof getSignalsResponseSchema>
+  const getSignalsResponse = getSignalsResponseSchema.parse(
+    signals.map((signal) => ({
+      ...signal,
+      // biome-ignore lint/style/noNonNullAssertion: sql enforce non-nullable approvedAt
+      publishedAt: signal.approvedAt!.toISOString(),
+    }))
   );
 
   return c.json(getSignalsResponse, 200);
