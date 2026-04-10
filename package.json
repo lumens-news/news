@@ -24,7 +24,6 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "typecheck": "turbo typecheck",
-    "format": "turbo format",
     "lint": "turbo lint",
     "prepare": "husky"
   },

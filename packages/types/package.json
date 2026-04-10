@@ -6,8 +6,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "format": "biome format --write",
-    "lint": "biome lint --write"
+    "lint": "biome check --write"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
