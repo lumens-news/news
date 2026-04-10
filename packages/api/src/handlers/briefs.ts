@@ -5,9 +5,10 @@ import { v7 } from "uuid";
 
 import type { Env } from "../config/env";
 import * as tables from "../lib/db";
-import { buildErrorSchema, buildNotFoundErrorSchema } from "../lib/openapi/errors";
+import { buildErrorSchema, buildNotFoundErrorSchema, forbiddenErrorCode, forbiddenErrorDefaultMessage } from "../lib/openapi/errors";
 import { addressSchema, briefSchema, idSchema } from "../lib/openapi/schemas";
 import { brief } from "../lib/openapi/tags";
+import { isEvaluator } from "../middlewares/is-evalutor";
 import { buildError, internalServerError } from "../utils/error";
 
 const briefsHandlers = new OpenAPIHono<Env>();
@@ -99,7 +100,7 @@ const compileBriefRequestBodySchema = z.object({
 const compileBrief = createRoute({
   method: "post",
   path: "/compile",
-  description: "Compile brief",
+  description: "Compile brief (evaluator only)",
   request: {
     headers: compileBriefRequestHeaderSchema,
     body: {
@@ -110,6 +111,7 @@ const compileBrief = createRoute({
       },
     },
   },
+  middleware: [(c, next) => isEvaluator(c.req.header("x-stellar-address"))(c, next)],
   responses: {
     201: {
       description: "Brief compiled successfully",
@@ -124,6 +126,17 @@ const compileBrief = createRoute({
           }),
         },
       },
+    },
+    403: {
+      content: {
+        "application/json": {
+          schema: buildErrorSchema(forbiddenErrorCode).default({
+            error: forbiddenErrorCode,
+            message: forbiddenErrorDefaultMessage,
+          }),
+        },
+      },
+      description: "Not allowed to reject signal",
     },
     409: {
       description: "Brief already compiled",
