@@ -51,7 +51,7 @@ app.onError(async (err, c) => {
 
   console.error(err);
 
-  return c.json(internalServerError, 500);
+  return c.json(internalServerError(), 500);
 });
 
 export default app;
