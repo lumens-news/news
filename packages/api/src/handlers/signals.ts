@@ -5,7 +5,7 @@ import { drizzle } from "drizzle-orm/d1";
 import type { Env } from "../config/env";
 import { beats } from "../config/beats";
 import * as tables from "../lib/db";
-import { resolveNotFoundErrorSchema } from "../lib/openapi/errors";
+import { buildNotFoundErrorSchema } from "../lib/openapi/errors";
 import { addressSchema, beatSchema, idSchema, signalSchema, signalSourceSchema } from "../lib/openapi/schemas";
 import { signal } from "../lib/openapi/tags";
 import { buildError, internalServerError } from "../utils/error";
@@ -104,7 +104,7 @@ const getSignal = createRoute({
     404: {
       content: {
         "application/json": {
-          schema: resolveNotFoundErrorSchema("signal").default({
+          schema: buildNotFoundErrorSchema("signal").default({
             error: "signal_not_found",
             message: "Signal with id X was not found",
           }),
