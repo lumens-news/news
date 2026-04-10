@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import type { Env } from "../config/env";
@@ -54,16 +54,18 @@ signalsHandlers.openapi(getSignals, async (c) => {
       body: tables.signals.body,
       tags: tables.signals.tags,
       sources: tables.signals.sources,
-      filedAt: tables.signals.filedAt,
+      approvedAt: tables.signals.approvedAt,
     })
     .from(tables.signals)
-    .where(and(beat ? eq(tables.signals.beat, beat) : undefined, eq(tables.signals.status, "approved")))
+    .where(and(beat ? eq(tables.signals.beat, beat) : undefined, eq(tables.signals.status, "approved"), isNotNull(tables.signals.approvedAt)))
     .limit(limit)
     .offset((page - 1) * limit);
 
   const getSignalsResponse = signals.reduce(
     (acc, signal) => {
-      const parseSignalResult = signalSchema.safeParse({ ...signal, filedAt: signal.filedAt.toISOString() });
+      if (!signal.approvedAt) return acc;
+
+      const parseSignalResult = signalSchema.safeParse({ ...signal, publishedAt: signal.approvedAt.toISOString() });
       if (!parseSignalResult.success) return acc;
 
       acc.push(parseSignalResult.data);
@@ -128,14 +130,14 @@ signalsHandlers.openapi(getSignal, async (c) => {
       body: tables.signals.body,
       tags: tables.signals.tags,
       sources: tables.signals.sources,
-      filedAt: tables.signals.filedAt,
+      approvedAt: tables.signals.approvedAt,
     })
     .from(tables.signals)
-    .where(and(eq(tables.signals.id, id), eq(tables.signals.status, "approved")));
+    .where(and(eq(tables.signals.id, id), eq(tables.signals.status, "approved"), isNotNull(tables.signals.approvedAt)));
 
-  if (!signal) return c.json(buildError("signal_not_found", `Signal with id ${id} not found`), 404);
+  if (!signal?.approvedAt) return c.json(buildError("signal_not_found", `Signal with id ${id} not found`), 404);
 
-  const getSignalResponse = getSignalResponseSchema.parse(signal);
+  const getSignalResponse = getSignalResponseSchema.parse({ ...signal, publishedAt: signal.approvedAt.toISOString() });
 
   return c.json(getSignalResponse, 200);
 });
