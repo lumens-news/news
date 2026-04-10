@@ -1,13 +1,14 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
+import { v7 } from "uuid";
 
 import type { Env } from "../config/env";
 import * as tables from "../lib/db";
-import { resolveNotFoundErrorSchema } from "../lib/openapi/errors";
-import { briefSchema, idSchema } from "../lib/openapi/schemas";
+import { buildErrorSchema, buildNotFoundErrorSchema } from "../lib/openapi/errors";
+import { addressSchema, briefSchema, idSchema } from "../lib/openapi/schemas";
 import { brief } from "../lib/openapi/tags";
-import { buildError } from "../utils/error";
+import { buildError, internalServerError } from "../utils/error";
 
 const briefsHandlers = new OpenAPIHono<Env>();
 
@@ -36,7 +37,7 @@ const getBrief = createRoute({
     404: {
       content: {
         "application/json": {
-          schema: resolveNotFoundErrorSchema("brief").default({
+          schema: buildNotFoundErrorSchema("brief").default({
             error: "brief_not_found",
             message: "Brief with date YYYY-MM-DD was not found",
           }),
@@ -87,6 +88,9 @@ briefsHandlers.openapi(getBrief, async (c) => {
 /* ======================================== */
 
 /* ========== POST /api/briefs/compile ========== */
+const compileBriefRequestHeaderSchema = z.object({
+  "x-stellar-address": addressSchema,
+});
 const compileBriefRequestBodySchema = z.object({
   date: z.iso.date().openapi({ description: "Brief date, format: YYYY-MM-DD" }),
   signalIds: z.array(idSchema),
@@ -97,6 +101,7 @@ const compileBrief = createRoute({
   path: "/compile",
   description: "Compile brief",
   request: {
+    headers: compileBriefRequestHeaderSchema,
     body: {
       content: {
         "application/json": {
@@ -109,12 +114,57 @@ const compileBrief = createRoute({
     201: {
       description: "Brief compiled successfully",
     },
+    400: {
+      description: "Invalid signals ids",
+      content: {
+        "application/json": {
+          schema: buildErrorSchema("invalid_signal_ids").default({
+            error: "invalid_signal_ids",
+            message: "Invalid signal ids provided",
+          }),
+        },
+      },
+    },
+    409: {
+      description: "Brief already compiled",
+      content: {
+        "application/json": {
+          schema: buildErrorSchema("brief_already_compiled").default({
+            error: "brief_already_compiled",
+            message: "Brief date YYYY-MM-DD has been compiled",
+          }),
+        },
+      },
+    },
   },
   tags: [brief],
 });
 
 briefsHandlers.openapi(compileBrief, async (c) => {
-  return c.body(null, 201);
+  const { "x-stellar-address": address } = c.req.valid("header");
+  const { date, signalIds } = c.req.valid("json");
+
+  const db = drizzle(c.env.LUMENS_DB);
+
+  const resolvedDate = new Date(date);
+
+  const [existingBrief] = await db.select().from(tables.briefs).where(eq(tables.briefs.date, resolvedDate));
+  if (existingBrief) return c.json(buildError("brief_already_compiled", `Brief date ${date} has been compiled`), 409);
+
+  const signals = await db
+    .select({ id: tables.signals.id })
+    .from(tables.signals)
+    .where(and(inArray(tables.signals.id, signalIds), eq(tables.signals.status, "approved")));
+  if (!signals.length) return c.json(buildError("invalid_signal_ids", "Invalid signal ids provided"), 400);
+
+  const briefId = v7();
+
+  const batchResult = await db.batch([
+    db.insert(tables.briefs).values({ id: briefId, date: resolvedDate, compiledBy: address }),
+    ...signals.map(({ id: signalId }) => db.insert(tables.briefSignals).values({ briefId, signalId })),
+  ]);
+
+  return batchResult.every((r) => r.success) ? c.body(null, 201) : c.json(internalServerError(), 500);
 });
 
 /* ======================================== */
