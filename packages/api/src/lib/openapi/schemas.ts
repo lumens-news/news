@@ -6,6 +6,8 @@ export const beatSchema = z.enum(beats).openapi("Beat");
 
 export const addressSchema = z.string().openapi("Address");
 
+export const idSchema = z.string().openapi("ID", { example: "123e4567-e89b-12d3-a456-426614174000" });
+
 export const signalSourceSchema = z
   .object({
     title: z.string(),
@@ -14,7 +16,7 @@ export const signalSourceSchema = z
   .openapi("SignalSource");
 export const signalSchema = z
   .object({
-    id: z.uuidv7(),
+    id: idSchema,
 
     correspondent: addressSchema,
 
@@ -31,7 +33,7 @@ export const signalSchema = z
 
 export const briefSchema = z
   .object({
-    id: z.uuidv7(),
+    id: idSchema,
     date: z.iso.date(),
     signals: z.array(signalSchema),
     compiledBy: addressSchema,

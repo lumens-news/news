@@ -6,7 +6,7 @@ import type { Env } from "../config/env";
 import { beats } from "../config/beats";
 import * as tables from "../lib/db";
 import { resolveNotFoundErrorSchema } from "../lib/openapi/errors";
-import { addressSchema, beatSchema, signalSchema, signalSourceSchema } from "../lib/openapi/schemas";
+import { addressSchema, beatSchema, idSchema, signalSchema, signalSourceSchema } from "../lib/openapi/schemas";
 import { signal } from "../lib/openapi/tags";
 import { buildError, internalServerError } from "../utils/error";
 
@@ -79,7 +79,7 @@ signalsHandlers.openapi(getSignals, async (c) => {
 
 /* ========== GET /api/signals/:id ========== */
 const getSignalRequestParamSchema = z.object({
-  id: z.uuidv7(),
+  id: idSchema,
 });
 const getSignalResponseSchema = signalSchema;
 

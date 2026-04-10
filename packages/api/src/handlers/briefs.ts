@@ -2,7 +2,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 
 import type { Env } from "../config/env";
 import { resolveNotFoundErrorSchema } from "../lib/openapi/errors";
-import { briefSchema } from "../lib/openapi/schemas";
+import { briefSchema, idSchema } from "../lib/openapi/schemas";
 import { brief } from "../lib/openapi/tags";
 
 const briefsHandlers = new OpenAPIHono<Env>();
@@ -51,7 +51,7 @@ briefsHandlers.openapi(getBrief, (c) => c.json({} as z.infer<typeof getBriefResp
 /* ========== POST /api/briefs/compile ========== */
 const compileBriefRequestBodySchema = z.object({
   date: z.iso.date().openapi({ description: "Brief date, format: YYYY-MM-DD" }),
-  signalIds: z.array(z.uuidv7()),
+  signalIds: z.array(idSchema),
 });
 
 const compileBrief = createRoute({
