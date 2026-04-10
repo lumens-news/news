@@ -156,6 +156,7 @@ const fileSignalRequestBodySchema = z.object({
 const fileSignal = createRoute({
   method: "post",
   path: "/",
+  description: "File a signal",
   request: {
     headers: fileSignalRequestHeaderSchema,
     body: {
