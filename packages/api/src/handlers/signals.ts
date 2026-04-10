@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import type { Env } from "../config/env";
@@ -58,6 +58,7 @@ signalsHandlers.openapi(getSignals, async (c) => {
     })
     .from(tables.signals)
     .where(and(beat ? eq(tables.signals.beat, beat) : undefined, eq(tables.signals.status, "approved"), isNotNull(tables.signals.approvedAt)))
+    .orderBy(desc(tables.signals.approvedAt), desc(tables.signals.id))
     .limit(limit)
     .offset((page - 1) * limit);
 
