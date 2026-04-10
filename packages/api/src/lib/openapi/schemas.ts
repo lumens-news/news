@@ -25,7 +25,7 @@ export const signalSchema = z
     tags: z.array(z.string()),
     sources: z.array(signalSourceSchema),
 
-    createdAt: z.date(),
+    filedAt: z.iso.datetime(),
   })
   .openapi("Signal");
 

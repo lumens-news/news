@@ -18,7 +18,7 @@ export const signals = sqliteTable(
     body: text("body").notNull(),
 
     tags: text("tags", { mode: "json" }).notNull().$type<string[]>(),
-    sources: text("sources", { mode: "json" }).notNull().$type<SignalSource>(),
+    sources: text("sources", { mode: "json" }).notNull().$type<SignalSource[]>(),
 
     status: text("status", { enum: signalStatuses }).notNull().default("pending"),
 
