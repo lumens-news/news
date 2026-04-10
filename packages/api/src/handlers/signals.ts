@@ -5,7 +5,7 @@ import { drizzle } from "drizzle-orm/d1";
 import type { Env } from "../config/env";
 import { beats } from "../config/beats";
 import * as tables from "../lib/db";
-import { buildErrorSchema, buildNotFoundErrorSchema } from "../lib/openapi/errors";
+import { buildErrorSchema, buildNotFoundErrorSchema, forbiddenErrorCode, forbiddenErrorDefaultMessage } from "../lib/openapi/errors";
 import { addressSchema, beatSchema, idSchema, signalSchema, signalSourceSchema } from "../lib/openapi/schemas";
 import { signal } from "../lib/openapi/tags";
 import { isEvaluator } from "../middlewares/is-evalutor";
@@ -233,6 +233,17 @@ const publishSignal = createRoute({
       },
       description: "Signal publish failed",
     },
+    403: {
+      content: {
+        "application/json": {
+          schema: buildErrorSchema(forbiddenErrorCode).default({
+            error: forbiddenErrorCode,
+            message: forbiddenErrorDefaultMessage,
+          }),
+        },
+      },
+      description: "Not allowed to publish signal",
+    },
     404: {
       content: {
         "application/json": {
@@ -321,6 +332,17 @@ const rejectSignal = createRoute({
         },
       },
       description: "Signal rejection failed",
+    },
+    403: {
+      content: {
+        "application/json": {
+          schema: buildErrorSchema(forbiddenErrorCode).default({
+            error: forbiddenErrorCode,
+            message: forbiddenErrorDefaultMessage,
+          }),
+        },
+      },
+      description: "Not allowed to reject signal",
     },
     404: {
       content: {
