@@ -1,4 +1,4 @@
 export type Env = {
   Bindings: CloudflareBindings;
-  Variables: {};
+  // Variables: {};
 };

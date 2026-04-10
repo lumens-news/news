@@ -5,9 +5,12 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write",
+    "lint": "biome lint --write"
   },
   "devDependencies": {
+    "@biomejs/biome": "catalog:",
     "@total-typescript/ts-reset": "catalog:",
     "@tsconfig/bun": "catalog:",
     "typescript": "catalog:"
