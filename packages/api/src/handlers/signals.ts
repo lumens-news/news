@@ -172,6 +172,7 @@ const fileSignal = createRoute({
       description: "Signal filed",
     },
   },
+  tags: [signal],
 });
 
 signalsHandlers.openapi(fileSignal, async (c) => {
