@@ -19,13 +19,14 @@
   //     "bucket_name": "my-bucket"
   //   }
   // ],
-  // "d1_databases": [
-  //   {
-  //     "binding": "MY_DB",
-  //     "database_name": "my-database",
-  //     "database_id": ""
-  //   }
-  // ],
+  "d1_databases": [
+    {
+      "binding": "LUMENS_DB",
+      "database_name": "lumens_news",
+      "database_id": "xxxxxxxxxx",
+      "migrations_dir": "migrations"
+    }
+  ],
   // "ai": {
   //   "binding": "AI"
   // },
