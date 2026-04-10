@@ -1,10 +1,11 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 
+import type { Env } from "../config/env";
 import { resolveNotFoundErrorSchema } from "../lib/openapi/errors";
 import { briefSchema } from "../lib/openapi/schemas";
 import { brief } from "../lib/openapi/tags";
 
-const briefsHandlers = new OpenAPIHono();
+const briefsHandlers = new OpenAPIHono<Env>();
 
 /* ========== GET /api/briefs/:date ========== */
 const getBriefRequestParamSchema = z.object({

@@ -1,11 +1,12 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 
+import type { Env } from "../config/env";
 import { beats } from "../config/beats";
 import { resolveNotFoundErrorSchema } from "../lib/openapi/errors";
 import { signalSchema } from "../lib/openapi/schemas";
 import { signal } from "../lib/openapi/tags";
 
-const signalsHandlers = new OpenAPIHono();
+const signalsHandlers = new OpenAPIHono<Env>();
 
 /* ========== GET /api/signals ========== */
 const getSignalsRequestQuerySchema = z.object({
