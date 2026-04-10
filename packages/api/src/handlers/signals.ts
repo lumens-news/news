@@ -57,7 +57,7 @@ signalsHandlers.openapi(getSignals, async (c) => {
       filedAt: tables.signals.filedAt,
     })
     .from(tables.signals)
-    .where(beat ? eq(tables.signals.beat, beat) : undefined)
+    .where(and(beat ? eq(tables.signals.beat, beat) : undefined, eq(tables.signals.status, "approved")))
     .limit(limit)
     .offset((page - 1) * limit);
 
