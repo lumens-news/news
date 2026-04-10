@@ -34,15 +34,17 @@ app
   .get("/docs", Scalar({ url: "/openapi.json" }))
   .get("/llms.txt", async (c) => c.text(await createMarkdownFromOpenApi(JSON.stringify(openApiDoc))));
 
-app.get("/", (c) =>
-  c.json(
-    {
-      title: "lumens.news API",
-      version: "1.0.0",
-    },
-    200
+app
+  .get("/", (c) =>
+    c.json(
+      {
+        title: "lumens.news API",
+        version: "1.0.0",
+      },
+      200
+    )
   )
-);
+  .get("/health", (c) => c.text("OK", 200));
 
 app.onError(async (err, c) => {
   if (err instanceof HTTPException) {
