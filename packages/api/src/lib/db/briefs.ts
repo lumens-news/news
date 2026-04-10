@@ -9,7 +9,7 @@ export const briefs = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => v7()),
-    date: int("date", { mode: "timestamp" }).notNull().unique(),
+    date: int("date", { mode: "timestamp" }).notNull(),
     compiledBy: text("compiled_by").notNull(),
 
     createdAt: int("createdAt", { mode: "timestamp_ms" })

@@ -1,0 +1,1 @@
+DROP INDEX `briefs_date_unique`;
