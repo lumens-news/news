@@ -80,7 +80,7 @@ briefsHandlers.openapi(getBrief, async (c) => {
   // biome-ignore lint/style/noNonNullAssertion: approvedAt are always available since briefs only contain approved signals
   const signals = [brief, ...rest].map((r) => ({ ...r.signal, publishedAt: r.signal.approvedAt!.toISOString() }));
 
-  const getBriefResponse = getBriefResponseSchema.parse({ ...brief, signals });
+  const getBriefResponse = getBriefResponseSchema.parse({ ...brief, date, signals });
 
   return c.json(getBriefResponse, 200);
 });
