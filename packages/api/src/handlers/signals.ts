@@ -303,7 +303,7 @@ const rejectSignalRequestParamSchema = z.object({
   id: idSchema,
 });
 const rejectSignalRequestBodySchema = z.object({
-  reason: z.string(),
+  reason: z.string().min(1).max(1024),,
 });
 
 const rejectSignal = createRoute({
