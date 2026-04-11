@@ -6,8 +6,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "biome check --write --staged",
-    "lint:staged": "biome check --write --staged"
+    "lint": "biome check --write",
+    "lint:staged": "biome check --write --staged --files-ignore-unknown=true --no-errors-on-unmatched"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
