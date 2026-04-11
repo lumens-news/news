@@ -136,7 +136,7 @@ const compileBrief = createRoute({
           }),
         },
       },
-      description: "Not allowed to reject signal",
+      description: "Not allowed to compile brief",
     },
     409: {
       description: "Brief already compiled",
