@@ -8,7 +8,7 @@ import * as tables from "../lib/db";
 import { buildErrorSchema, buildNotFoundErrorSchema } from "../lib/openapi/errors";
 import { addressSchema, beatSchema, idSchema, signalSchema, signalSourceSchema } from "../lib/openapi/schemas";
 import { signal } from "../lib/openapi/tags";
-import { isEvaluator, onlyEvaluatorErrorCode, onlyEvaluatorErrorMessage } from "../middlewares/is-evalutor";
+import { isEvaluator, onlyEvaluatorErrorCode, onlyEvaluatorErrorMessage } from "../middlewares/is-evaluator";
 import { buildError, internalServerError } from "../utils/error";
 
 const signalsHandlers = new OpenAPIHono<Env>();

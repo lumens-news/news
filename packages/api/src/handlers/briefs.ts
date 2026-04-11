@@ -8,7 +8,7 @@ import * as tables from "../lib/db";
 import { buildErrorSchema, buildNotFoundErrorSchema } from "../lib/openapi/errors";
 import { addressSchema, briefSchema, idSchema } from "../lib/openapi/schemas";
 import { brief } from "../lib/openapi/tags";
-import { isEvaluator, onlyEvaluatorErrorCode, onlyEvaluatorErrorMessage } from "../middlewares/is-evalutor";
+import { isEvaluator, onlyEvaluatorErrorCode, onlyEvaluatorErrorMessage } from "../middlewares/is-evaluator";
 import { buildError, internalServerError } from "../utils/error";
 
 const briefsHandlers = new OpenAPIHono<Env>();
