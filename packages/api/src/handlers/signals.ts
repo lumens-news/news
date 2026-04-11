@@ -5,10 +5,10 @@ import { drizzle } from "drizzle-orm/d1";
 import type { Env } from "../config/env";
 import { beats } from "../config/beats";
 import * as tables from "../lib/db";
-import { buildErrorSchema, buildNotFoundErrorSchema, forbiddenErrorCode, forbiddenErrorDefaultMessage } from "../lib/openapi/errors";
+import { buildErrorSchema, buildNotFoundErrorSchema } from "../lib/openapi/errors";
 import { addressSchema, beatSchema, idSchema, signalSchema, signalSourceSchema } from "../lib/openapi/schemas";
 import { signal } from "../lib/openapi/tags";
-import { isEvaluator } from "../middlewares/is-evalutor";
+import { isEvaluator, onlyEvaluatorErrorCode, onlyEvaluatorErrorMessage } from "../middlewares/is-evalutor";
 import { buildError, internalServerError } from "../utils/error";
 
 const signalsHandlers = new OpenAPIHono<Env>();
@@ -236,9 +236,13 @@ const publishSignal = createRoute({
     403: {
       content: {
         "application/json": {
-          schema: buildErrorSchema(forbiddenErrorCode).default({
-            error: forbiddenErrorCode,
-            message: forbiddenErrorDefaultMessage,
+          schema: buildErrorSchema(onlyEvaluatorErrorCode).openapi({
+            examples: [
+              {
+                error: onlyEvaluatorErrorCode,
+                message: onlyEvaluatorErrorMessage,
+              },
+            ],
           }),
         },
       },
@@ -336,9 +340,13 @@ const rejectSignal = createRoute({
     403: {
       content: {
         "application/json": {
-          schema: buildErrorSchema(forbiddenErrorCode).default({
-            error: forbiddenErrorCode,
-            message: forbiddenErrorDefaultMessage,
+          schema: buildErrorSchema(onlyEvaluatorErrorCode).openapi({
+            examples: [
+              {
+                error: onlyEvaluatorErrorCode,
+                message: onlyEvaluatorErrorMessage,
+              },
+            ],
           }),
         },
       },

@@ -5,10 +5,10 @@ import { v7 } from "uuid";
 
 import type { Env } from "../config/env";
 import * as tables from "../lib/db";
-import { buildErrorSchema, buildNotFoundErrorSchema, forbiddenErrorCode, forbiddenErrorDefaultMessage } from "../lib/openapi/errors";
+import { buildErrorSchema, buildNotFoundErrorSchema } from "../lib/openapi/errors";
 import { addressSchema, briefSchema, idSchema } from "../lib/openapi/schemas";
 import { brief } from "../lib/openapi/tags";
-import { isEvaluator } from "../middlewares/is-evalutor";
+import { isEvaluator, onlyEvaluatorErrorCode, onlyEvaluatorErrorMessage } from "../middlewares/is-evalutor";
 import { buildError, internalServerError } from "../utils/error";
 
 const briefsHandlers = new OpenAPIHono<Env>();
@@ -130,9 +130,13 @@ const compileBrief = createRoute({
     403: {
       content: {
         "application/json": {
-          schema: buildErrorSchema(forbiddenErrorCode).default({
-            error: forbiddenErrorCode,
-            message: forbiddenErrorDefaultMessage,
+          schema: buildErrorSchema(onlyEvaluatorErrorCode).openapi({
+            examples: [
+              {
+                error: onlyEvaluatorErrorCode,
+                message: onlyEvaluatorErrorMessage,
+              },
+            ],
           }),
         },
       },
