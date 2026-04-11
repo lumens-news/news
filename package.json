@@ -25,6 +25,7 @@
     "dev": "turbo dev",
     "typecheck": "turbo typecheck",
     "lint": "turbo lint",
+    "lint:staged": "turbo lint:staged",
     "prepare": "husky"
   },
   "devDependencies": {

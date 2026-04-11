@@ -27,8 +27,10 @@ export const signals = sqliteTable(
       .$defaultFn(() => new Date()),
 
     approvedAt: int("approvedAt", { mode: "timestamp_ms" }),
+    approvedBy: text("approvedBy"),
 
     rejectedAt: int("rejectedAt", { mode: "timestamp_ms" }),
+    rejectedBy: text("rejectedBy"),
     rejectionReason: text("rejection_reason"),
 
     createdAt: int("createdAt", { mode: "timestamp_ms" })

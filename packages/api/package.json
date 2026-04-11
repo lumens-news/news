@@ -6,7 +6,8 @@
     "deploy": "wrangler deploy --minify",
     "cf-typegen": "wrangler types --env-interface CloudflareBindings",
     "typecheck": "tsc --noEmit",
-    "lint": "biome check --write"
+    "lint": "biome check --write",
+    "lint:staged": "biome check --write --staged --files-ignore-unknown=true --no-errors-on-unmatched"
   },
   "dependencies": {
     "@hono/zod-openapi": "1.2.4",
