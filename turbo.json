@@ -3,6 +3,7 @@
   "tasks": {
     "typecheck": {},
     "lint": {},
+    "lint:staged": {},
     "dev": {
       "cache": false,
       "persistent": true
