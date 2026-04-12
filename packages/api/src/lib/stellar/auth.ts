@@ -8,6 +8,8 @@ export type VerifyStellarAuthParam = {
 };
 
 export function verifyStellarSignature({ address, message, signature, timestamp }: VerifyStellarAuthParam): boolean {
+  if (!Number.isInteger(timestamp)) return false;
+
   // Check timestamp freshness (±5 minutes)
   const now = Math.floor(Date.now() / 1000);
   if (Math.abs(now - timestamp) > 300) return false;
