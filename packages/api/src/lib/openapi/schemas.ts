@@ -1,10 +1,20 @@
 import { z } from "@hono/zod-openapi";
 
+import { signalStatuses } from "@lumens-news/types";
+
 import { beats } from "../../config/beats";
 
 export const beatSchema = z.enum(beats).openapi("Beat");
 
 export const addressSchema = z.string().openapi("Address");
+
+export const stellarAuthSchema = z
+  .object({
+    "x-stellar-address": addressSchema,
+    "x-stellar-signature": z.base64(),
+    "x-stellar-timestamp": z.coerce.number().int(),
+  })
+  .openapi("StellarAuth");
 
 export const idSchema = z.uuidv7().openapi("ID", { example: "018f4f47-1f9d-7c13-bd3d-a2f5e857e5db" });
 
@@ -62,6 +72,26 @@ export const signalSchema = z
     publishedAt: z.iso.datetime(),
   })
   .openapi("Signal");
+
+export const signalStatusSchema = z.enum(signalStatuses).openapi("SignalStatus");
+
+export const signalReviewSchema = z
+  .object({
+    id: idSchema,
+
+    correspondent: addressSchema,
+
+    beat: beatSchema,
+    headline: z.string(),
+    body: z.string(),
+
+    tags: z.array(z.string()),
+    sources: z.array(signalSourceSchema),
+
+    status: signalStatusSchema,
+    filedAt: z.iso.datetime(),
+  })
+  .openapi("SignalReview");
 
 export const briefSchema = z
   .object({

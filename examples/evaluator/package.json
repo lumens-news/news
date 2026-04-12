@@ -1,0 +1,19 @@
+{
+  "name": "evaluator",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^15.0.1",
+    "ai": "^6.0.158",
+    "zod": "^4.3.6"
+  }
+}

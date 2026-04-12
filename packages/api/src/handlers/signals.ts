@@ -3,32 +3,37 @@ import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import type { Env } from "../config/env";
+import type { EvaluatorVariables } from "../middlewares/is-evaluator";
+import type { StellarAuthVariables } from "../middlewares/stellar-auth";
 import { beats } from "../config/beats";
 import * as tables from "../lib/db";
 import { buildErrorSchema, buildNotFoundErrorSchema } from "../lib/openapi/errors";
 import {
-  addressSchema,
   beatSchema,
   idSchema,
   paymentProofSchema,
   paymentRequiredSchema,
   paymentSettledSchema,
   signalPreviewSchema,
+  signalReviewSchema,
   signalSchema,
   signalSourceSchema,
+  signalStatusSchema,
+  stellarAuthSchema,
 } from "../lib/openapi/schemas";
 import { signal } from "../lib/openapi/tags";
 import { isEvaluator, onlyEvaluatorErrorCode, onlyEvaluatorErrorMessage } from "../middlewares/is-evaluator";
+import { invalidAuthSignatureErrorCode, invalidAuthSignatureErrorMessage, stellarAuth } from "../middlewares/stellar-auth";
 import { x402Payment } from "../middlewares/x402";
 import { buildError, internalServerError } from "../utils/error";
 
-const signalsHandlers = new OpenAPIHono<Env>();
+const signalsHandlers = new OpenAPIHono<Env & StellarAuthVariables & EvaluatorVariables>();
 
 /* ========== GET /api/signals ========== */
 const getSignalsRequestQuerySchema = z.object({
   beat: z.enum(beats).openapi({ description: "Filter by beat" }).optional(),
-  page: z.int().min(1).default(1).openapi({ description: "Page" }),
-  limit: z.int().min(1).max(100).default(50).openapi({ description: "Limit per page" }),
+  page: z.coerce.number().int().min(1).default(1).openapi({ description: "Page" }),
+  limit: z.coerce.number().int().min(1).max(100).default(50).openapi({ description: "Limit per page" }),
 });
 const getSignalsResponseSchema = z.array(signalPreviewSchema);
 
@@ -81,6 +86,114 @@ signalsHandlers.openapi(getSignals, async (c) => {
   );
 
   return c.json(getSignalsResponse, 200);
+});
+
+/* ======================================== */
+
+/* ========== GET /api/signals/review ========== */
+const getSignalsForReviewRequestQuerySchema = z.object({
+  beat: z.enum(beats).openapi({ description: "Filter by beat" }).optional(),
+  status: signalStatusSchema.openapi({ description: "Filter by status" }).optional(),
+  page: z.coerce.number().int().min(1).default(1).openapi({ description: "Page" }),
+  limit: z.coerce.number().int().min(1).max(100).default(50).openapi({ description: "Limit per page" }),
+});
+const getSignalsForReviewResponseSchema = z.array(signalReviewSchema);
+
+const getSignalsForReview = createRoute({
+  method: "get",
+  path: "/review",
+  description: "Get signals for review (evaluator only)",
+  request: {
+    headers: stellarAuthSchema,
+    query: getSignalsForReviewRequestQuerySchema,
+  },
+  middleware: [
+    (c, next) => {
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const address = c.req.header("x-stellar-address")!;
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const signature = c.req.header("x-stellar-signature")!;
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const timestamp = c.req.header("x-stellar-timestamp")!;
+
+      return stellarAuth({ address, signature, timestamp })(c, next);
+    },
+    (c, next) => isEvaluator(c.req.header("x-stellar-address"))(c, next),
+  ],
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: getSignalsForReviewResponseSchema,
+        },
+      },
+      description: "List of signals for review",
+    },
+    401: {
+      content: {
+        "application/json": {
+          schema: buildErrorSchema(invalidAuthSignatureErrorCode).openapi({
+            examples: [
+              {
+                error: invalidAuthSignatureErrorCode,
+                message: invalidAuthSignatureErrorMessage,
+              },
+            ],
+          }),
+        },
+      },
+      description: "Review signals authorization failed",
+    },
+    403: {
+      content: {
+        "application/json": {
+          schema: buildErrorSchema(onlyEvaluatorErrorCode).openapi({
+            examples: [
+              {
+                error: onlyEvaluatorErrorCode,
+                message: onlyEvaluatorErrorMessage,
+              },
+            ],
+          }),
+        },
+      },
+      description: "Not allowed to review signals",
+    },
+  },
+  tags: [signal],
+});
+
+signalsHandlers.openapi(getSignalsForReview, async (c) => {
+  const { beat, status, page, limit } = c.req.valid("query");
+
+  const db = drizzle(c.env.LUMENS_DB);
+
+  const signals = await db
+    .select({
+      id: tables.signals.id,
+      correspondent: tables.signals.correspondent,
+      beat: tables.signals.beat,
+      headline: tables.signals.headline,
+      body: tables.signals.body,
+      tags: tables.signals.tags,
+      sources: tables.signals.sources,
+      status: tables.signals.status,
+      filedAt: tables.signals.filedAt,
+    })
+    .from(tables.signals)
+    .where(and(beat ? eq(tables.signals.beat, beat) : undefined, status ? eq(tables.signals.status, status) : undefined))
+    .orderBy(desc(tables.signals.filedAt), desc(tables.signals.id))
+    .limit(limit)
+    .offset((page - 1) * limit);
+
+  const getSignalsForReviewResponse = getSignalsForReviewResponseSchema.parse(
+    signals.map((signal) => ({
+      ...signal,
+      filedAt: signal.filedAt.toISOString(),
+    }))
+  );
+
+  return c.json(getSignalsForReviewResponse, 200);
 });
 
 /* ======================================== */
@@ -158,9 +271,6 @@ signalsHandlers.openapi(getSignal, async (c) => {
 /* ======================================== */
 
 /* ========== POST /api/signals ========== */
-const fileSignalRequestHeaderSchema = z.object({
-  "x-stellar-address": addressSchema,
-});
 const fileSignalRequestBodySchema = z.object({
   beat: beatSchema,
   headline: z.string().min(6).max(300),
@@ -174,7 +284,7 @@ const fileSignal = createRoute({
   path: "/",
   description: "File a signal",
   request: {
-    headers: fileSignalRequestHeaderSchema,
+    headers: stellarAuthSchema,
     body: {
       content: {
         "application/json": {
@@ -183,22 +293,48 @@ const fileSignal = createRoute({
       },
     },
   },
+  middleware: [
+    (c, next) => {
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const address = c.req.header("x-stellar-address")!;
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const signature = c.req.header("x-stellar-signature")!;
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const timestamp = c.req.header("x-stellar-timestamp")!;
+
+      return stellarAuth({ address, signature, timestamp })(c, next);
+    },
+  ],
   responses: {
     201: {
       description: "Signal filed",
+    },
+    401: {
+      content: {
+        "application/json": {
+          schema: buildErrorSchema(invalidAuthSignatureErrorCode).openapi({
+            examples: [
+              {
+                error: invalidAuthSignatureErrorCode,
+                message: invalidAuthSignatureErrorMessage,
+              },
+            ],
+          }),
+        },
+      },
+      description: "File signal authorization failed",
     },
   },
   tags: [signal],
 });
 
 signalsHandlers.openapi(fileSignal, async (c) => {
-  const { "x-stellar-address": address } = c.req.valid("header");
   const { beat, headline, body, tags, sources } = c.req.valid("json");
 
   const db = drizzle(c.env.LUMENS_DB);
 
   const result = await db.insert(tables.signals).values({
-    correspondent: address,
+    correspondent: c.get("stellarAddress"),
     beat,
     headline,
     body,
@@ -218,9 +354,6 @@ signalsHandlers.openapi(fileSignal, async (c) => {
 /* ======================================== */
 
 /* ========== POST /api/signals/:id/publish ========== */
-const publishSignalRequestHeaderSchema = z.object({
-  "x-stellar-address": addressSchema,
-});
 const publishSignalRequestParamSchema = z.object({
   id: idSchema,
 });
@@ -231,10 +364,22 @@ const publishSignal = createRoute({
   description: "Publish a signal (evaluator only)",
   // hide: true,
   request: {
-    headers: publishSignalRequestHeaderSchema,
+    headers: stellarAuthSchema,
     params: publishSignalRequestParamSchema,
   },
-  middleware: [(c, next) => isEvaluator(c.req.header("x-stellar-address"))(c, next)],
+  middleware: [
+    (c, next) => {
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const address = c.req.header("x-stellar-address")!;
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const signature = c.req.header("x-stellar-signature")!;
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const timestamp = c.req.header("x-stellar-timestamp")!;
+
+      return stellarAuth({ address, signature, timestamp })(c, next);
+    },
+    (c, next) => isEvaluator(c.req.header("x-stellar-address"))(c, next),
+  ],
   responses: {
     200: {
       description: "Signal published",
@@ -248,6 +393,21 @@ const publishSignal = createRoute({
         },
       },
       description: "Signal publish failed",
+    },
+    401: {
+      content: {
+        "application/json": {
+          schema: buildErrorSchema(invalidAuthSignatureErrorCode).openapi({
+            examples: [
+              {
+                error: invalidAuthSignatureErrorCode,
+                message: invalidAuthSignatureErrorMessage,
+              },
+            ],
+          }),
+        },
+      },
+      description: "Publish signal authorization failed",
     },
     403: {
       content: {
@@ -280,7 +440,6 @@ const publishSignal = createRoute({
 });
 
 signalsHandlers.openapi(publishSignal, async (c) => {
-  const { "x-stellar-address": address } = c.req.valid("header");
   const { id } = c.req.valid("param");
 
   const db = drizzle(c.env.LUMENS_DB);
@@ -296,7 +455,7 @@ signalsHandlers.openapi(publishSignal, async (c) => {
     .set({
       status: "approved",
       approvedAt: new Date(),
-      approvedBy: address,
+      approvedBy: c.get("stellarAddress"),
     })
     .where(and(eq(tables.signals.id, id), eq(tables.signals.status, "pending")));
 
@@ -312,9 +471,6 @@ signalsHandlers.openapi(publishSignal, async (c) => {
 /* ======================================== */
 
 /* ========== POST /api/signals/:id/reject ========== */
-const rejectSignalRequestHeaderSchema = z.object({
-  "x-stellar-address": addressSchema,
-});
 const rejectSignalRequestParamSchema = z.object({
   id: idSchema,
 });
@@ -328,7 +484,7 @@ const rejectSignal = createRoute({
   description: "Reject a signal (evaluator only)",
   // hide: true,
   request: {
-    headers: rejectSignalRequestHeaderSchema,
+    headers: stellarAuthSchema,
     params: rejectSignalRequestParamSchema,
     body: {
       content: {
@@ -338,7 +494,19 @@ const rejectSignal = createRoute({
       },
     },
   },
-  middleware: [(c, next) => isEvaluator(c.req.header("x-stellar-address"))(c, next)],
+  middleware: [
+    (c, next) => {
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const address = c.req.header("x-stellar-address")!;
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const signature = c.req.header("x-stellar-signature")!;
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const timestamp = c.req.header("x-stellar-timestamp")!;
+
+      return stellarAuth({ address, signature, timestamp })(c, next);
+    },
+    (c, next) => isEvaluator(c.req.header("x-stellar-address"))(c, next),
+  ],
   responses: {
     200: {
       description: "Signal rejected",
@@ -352,6 +520,21 @@ const rejectSignal = createRoute({
         },
       },
       description: "Signal rejection failed",
+    },
+    401: {
+      content: {
+        "application/json": {
+          schema: buildErrorSchema(invalidAuthSignatureErrorCode).openapi({
+            examples: [
+              {
+                error: invalidAuthSignatureErrorCode,
+                message: invalidAuthSignatureErrorMessage,
+              },
+            ],
+          }),
+        },
+      },
+      description: "Reject signal authorization failed",
     },
     403: {
       content: {
@@ -384,7 +567,6 @@ const rejectSignal = createRoute({
 });
 
 signalsHandlers.openapi(rejectSignal, async (c) => {
-  const { "x-stellar-address": address } = c.req.valid("header");
   const { id } = c.req.valid("param");
   const { reason } = c.req.valid("json");
 
@@ -401,7 +583,7 @@ signalsHandlers.openapi(rejectSignal, async (c) => {
     .set({
       status: "rejected",
       rejectedAt: new Date(),
-      rejectedBy: address,
+      rejectedBy: c.get("stellarAddress"),
       rejectionReason: reason,
     })
     .where(and(eq(tables.signals.id, id), eq(tables.signals.status, "pending")));
