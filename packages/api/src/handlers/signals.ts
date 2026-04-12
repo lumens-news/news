@@ -6,9 +6,20 @@ import type { Env } from "../config/env";
 import { beats } from "../config/beats";
 import * as tables from "../lib/db";
 import { buildErrorSchema, buildNotFoundErrorSchema } from "../lib/openapi/errors";
-import { addressSchema, beatSchema, idSchema, signalSchema, signalSourceSchema } from "../lib/openapi/schemas";
+import {
+  addressSchema,
+  beatSchema,
+  idSchema,
+  paymentProofSchema,
+  paymentRequiredSchema,
+  paymentSettledSchema,
+  signalPreviewSchema,
+  signalSchema,
+  signalSourceSchema,
+} from "../lib/openapi/schemas";
 import { signal } from "../lib/openapi/tags";
 import { isEvaluator, onlyEvaluatorErrorCode, onlyEvaluatorErrorMessage } from "../middlewares/is-evaluator";
+import { x402Payment } from "../middlewares/x402";
 import { buildError, internalServerError } from "../utils/error";
 
 const signalsHandlers = new OpenAPIHono<Env>();
@@ -19,7 +30,7 @@ const getSignalsRequestQuerySchema = z.object({
   page: z.int().min(1).default(1).openapi({ description: "Page" }),
   limit: z.int().min(1).max(100).default(50).openapi({ description: "Limit per page" }),
 });
-const getSignalsResponseSchema = z.array(signalSchema);
+const getSignalsResponseSchema = z.array(signalPreviewSchema);
 
 const getSignals = createRoute({
   method: "get",
@@ -52,9 +63,7 @@ signalsHandlers.openapi(getSignals, async (c) => {
       correspondent: tables.signals.correspondent,
       beat: tables.signals.beat,
       headline: tables.signals.headline,
-      body: tables.signals.body,
       tags: tables.signals.tags,
-      sources: tables.signals.sources,
       approvedAt: tables.signals.approvedAt,
     })
     .from(tables.signals)
@@ -87,16 +96,23 @@ const getSignal = createRoute({
   path: "/{id}",
   description: "Get signal by id",
   request: {
+    headers: paymentProofSchema,
     params: getSignalRequestParamSchema,
   },
+  middleware: [x402Payment({ price: "$0.01", description: "Get specific signal content" })],
   responses: {
     200: {
+      headers: paymentSettledSchema,
       content: {
         "application/json": {
           schema: getSignalResponseSchema,
         },
       },
       description: "Signal detail",
+    },
+    402: {
+      headers: paymentRequiredSchema,
+      description: "Payment required to access signal",
     },
     404: {
       content: {

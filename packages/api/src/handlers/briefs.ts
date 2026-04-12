@@ -6,9 +6,10 @@ import { v7 } from "uuid";
 import type { Env } from "../config/env";
 import * as tables from "../lib/db";
 import { buildErrorSchema, buildNotFoundErrorSchema } from "../lib/openapi/errors";
-import { addressSchema, briefSchema, idSchema } from "../lib/openapi/schemas";
+import { addressSchema, briefSchema, idSchema, paymentProofSchema, paymentRequiredSchema, paymentSettledSchema } from "../lib/openapi/schemas";
 import { brief } from "../lib/openapi/tags";
 import { isEvaluator, onlyEvaluatorErrorCode, onlyEvaluatorErrorMessage } from "../middlewares/is-evaluator";
+import { x402Payment } from "../middlewares/x402";
 import { buildError, internalServerError } from "../utils/error";
 
 const briefsHandlers = new OpenAPIHono<Env>();
@@ -24,16 +25,23 @@ const getBrief = createRoute({
   path: "/{date}",
   description: "Get brief by date",
   request: {
+    headers: paymentProofSchema,
     params: getBriefRequestParamSchema,
   },
+  middleware: [x402Payment({ price: "$0.1", description: "Get daily brief full content" })],
   responses: {
     200: {
+      headers: paymentSettledSchema,
       content: {
         "application/json": {
           schema: getBriefResponseSchema,
         },
       },
       description: "Brief by date",
+    },
+    402: {
+      headers: paymentRequiredSchema,
+      description: "Payment required to access brief",
     },
     404: {
       content: {

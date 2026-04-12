@@ -8,12 +8,44 @@ export const addressSchema = z.string().openapi("Address");
 
 export const idSchema = z.uuidv7().openapi("ID", { example: "018f4f47-1f9d-7c13-bd3d-a2f5e857e5db" });
 
+export const paymentRequiredSchema = z
+  .object({
+    "payment-required": z.base64(),
+  })
+  .openapi("PaymentRequired");
+
+export const paymentProofSchema = z
+  .object({
+    "payment-signature": z.base64().optional(),
+  })
+  .openapi("PaymentProof");
+
+export const paymentSettledSchema = z
+  .object({
+    "payment-response": z.base64(),
+  })
+  .openapi("PaymentSettled");
+
 export const signalSourceSchema = z
   .object({
     title: z.string(),
     url: z.url(),
   })
   .openapi("SignalSource");
+export const signalPreviewSchema = z
+  .object({
+    id: idSchema,
+
+    correspondent: addressSchema,
+
+    beat: beatSchema,
+    headline: z.string(),
+
+    tags: z.array(z.string()),
+
+    publishedAt: z.iso.datetime(),
+  })
+  .openapi("SignalPreview");
 export const signalSchema = z
   .object({
     id: idSchema,
