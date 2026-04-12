@@ -23,8 +23,6 @@ export const stellarAuth = ({ address, signature, timestamp }: StellarAuthParam)
   createMiddleware<Env & StellarAuthVariables>(async (c, next) => {
     const message = `${c.req.method} ${c.req.path}:${timestamp}`;
 
-    console.log(message);
-
     const validSignature = verifyStellarSignature({
       address,
       message,
