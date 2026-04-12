@@ -1,8 +1,12 @@
 {
   "name": "client",
-  "module": "index.ts",
+  "module": "src/index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
