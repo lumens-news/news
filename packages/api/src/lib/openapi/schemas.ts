@@ -1,5 +1,7 @@
 import { z } from "@hono/zod-openapi";
 
+import { signalStatuses } from "@lumens-news/types";
+
 import { beats } from "../../config/beats";
 
 export const beatSchema = z.enum(beats).openapi("Beat");
@@ -70,6 +72,26 @@ export const signalSchema = z
     publishedAt: z.iso.datetime(),
   })
   .openapi("Signal");
+
+export const signalStatusSchema = z.enum(signalStatuses).openapi("SignalStatus");
+
+export const signalReviewSchema = z
+  .object({
+    id: idSchema,
+
+    correspondent: addressSchema,
+
+    beat: beatSchema,
+    headline: z.string(),
+    body: z.string(),
+
+    tags: z.array(z.string()),
+    sources: z.array(signalSourceSchema),
+
+    status: signalStatusSchema,
+    filedAt: z.iso.datetime(),
+  })
+  .openapi("SignalReview");
 
 export const briefSchema = z
   .object({

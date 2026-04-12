@@ -15,8 +15,10 @@ import {
   paymentRequiredSchema,
   paymentSettledSchema,
   signalPreviewSchema,
+  signalReviewSchema,
   signalSchema,
   signalSourceSchema,
+  signalStatusSchema,
   stellarAuthSchema,
 } from "../lib/openapi/schemas";
 import { signal } from "../lib/openapi/tags";
@@ -156,6 +158,114 @@ signalsHandlers.openapi(getSignal, async (c) => {
   const getSignalResponse = getSignalResponseSchema.parse({ ...signal, publishedAt: signal.approvedAt.toISOString() });
 
   return c.json(getSignalResponse, 200);
+});
+
+/* ======================================== */
+
+/* ========== GET /api/signals/review ========== */
+const getSignalsForReviewRequestQuerySchema = z.object({
+  beat: z.enum(beats).openapi({ description: "Filter by beat" }).optional(),
+  status: signalStatusSchema.openapi({ description: "Filter by status" }).optional(),
+  page: z.int().min(1).default(1).openapi({ description: "Page" }),
+  limit: z.int().min(1).max(100).default(50).openapi({ description: "Limit per page" }),
+});
+const getSignalsForReviewResponseSchema = z.array(signalReviewSchema);
+
+const getSignalsForReview = createRoute({
+  method: "get",
+  path: "/review",
+  description: "Get signals for review (evaluator only)",
+  request: {
+    headers: stellarAuthSchema,
+    query: getSignalsForReviewRequestQuerySchema,
+  },
+  middleware: [
+    (c, next) => {
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const address = c.req.header("x-stellar-address")!;
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const signature = c.req.header("x-stellar-signature")!;
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const timestamp = c.req.header("x-stellar-timestamp")!;
+
+      return stellarAuth({ address, signature, timestamp })(c, next);
+    },
+    (c, next) => isEvaluator(c.req.header("x-stellar-address"))(c, next),
+  ],
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: getSignalsForReviewResponseSchema,
+        },
+      },
+      description: "List of signals for review",
+    },
+    401: {
+      content: {
+        "application/json": {
+          schema: buildErrorSchema(invalidAuthSignatureErrorCode).openapi({
+            examples: [
+              {
+                error: invalidAuthSignatureErrorCode,
+                message: invalidAuthSignatureErrorMessage,
+              },
+            ],
+          }),
+        },
+      },
+      description: "Review signals authorization failed",
+    },
+    403: {
+      content: {
+        "application/json": {
+          schema: buildErrorSchema(onlyEvaluatorErrorCode).openapi({
+            examples: [
+              {
+                error: onlyEvaluatorErrorCode,
+                message: onlyEvaluatorErrorMessage,
+              },
+            ],
+          }),
+        },
+      },
+      description: "Not allowed to review signals",
+    },
+  },
+  tags: [signal],
+});
+
+signalsHandlers.openapi(getSignalsForReview, async (c) => {
+  const { beat, status, page, limit } = c.req.valid("query");
+
+  const db = drizzle(c.env.LUMENS_DB);
+
+  const signals = await db
+    .select({
+      id: tables.signals.id,
+      correspondent: tables.signals.correspondent,
+      beat: tables.signals.beat,
+      headline: tables.signals.headline,
+      body: tables.signals.body,
+      tags: tables.signals.tags,
+      sources: tables.signals.sources,
+      status: tables.signals.status,
+      filedAt: tables.signals.filedAt,
+    })
+    .from(tables.signals)
+    .where(and(beat ? eq(tables.signals.beat, beat) : undefined, status ? eq(tables.signals.status, status) : undefined))
+    .orderBy(desc(tables.signals.filedAt), desc(tables.signals.id))
+    .limit(limit)
+    .offset((page - 1) * limit);
+
+  const getSignalsForReviewResponse = getSignalsForReviewResponseSchema.parse(
+    signals.map((signal) => ({
+      ...signal,
+      filedAt: signal.filedAt.toISOString(),
+    }))
+  );
+
+  return c.json(getSignalsForReviewResponse, 200);
 });
 
 /* ======================================== */
