@@ -32,8 +32,8 @@ const signalsHandlers = new OpenAPIHono<Env & StellarAuthVariables & EvaluatorVa
 /* ========== GET /api/signals ========== */
 const getSignalsRequestQuerySchema = z.object({
   beat: z.enum(beats).openapi({ description: "Filter by beat" }).optional(),
-  page: z.int().min(1).default(1).openapi({ description: "Page" }),
-  limit: z.int().min(1).max(100).default(50).openapi({ description: "Limit per page" }),
+  page: z.coerce.number().int().min(1).default(1).openapi({ description: "Page" }),
+  limit: z.coerce.number().int().min(1).max(100).default(50).openapi({ description: "Limit per page" }),
 });
 const getSignalsResponseSchema = z.array(signalPreviewSchema);
 
@@ -90,84 +90,12 @@ signalsHandlers.openapi(getSignals, async (c) => {
 
 /* ======================================== */
 
-/* ========== GET /api/signals/:id ========== */
-const getSignalRequestParamSchema = z.object({
-  id: idSchema,
-});
-const getSignalResponseSchema = signalSchema;
-
-const getSignal = createRoute({
-  method: "get",
-  path: "/{id}",
-  description: "Get signal by id",
-  request: {
-    headers: paymentProofSchema,
-    params: getSignalRequestParamSchema,
-  },
-  middleware: [x402Payment({ price: "$0.01", description: "Get specific signal content" })],
-  responses: {
-    200: {
-      headers: paymentSettledSchema,
-      content: {
-        "application/json": {
-          schema: getSignalResponseSchema,
-        },
-      },
-      description: "Signal detail",
-    },
-    402: {
-      headers: paymentRequiredSchema,
-      description: "Payment required to access signal",
-    },
-    404: {
-      content: {
-        "application/json": {
-          schema: buildNotFoundErrorSchema("signal").default({
-            error: "signal_not_found",
-            message: "Signal with id X was not found",
-          }),
-        },
-      },
-      description: "Signal not found",
-    },
-  },
-  tags: [signal],
-});
-
-signalsHandlers.openapi(getSignal, async (c) => {
-  const { id } = c.req.valid("param");
-
-  const db = drizzle(c.env.LUMENS_DB);
-
-  const [signal] = await db
-    .select({
-      id: tables.signals.id,
-      correspondent: tables.signals.correspondent,
-      beat: tables.signals.beat,
-      headline: tables.signals.headline,
-      body: tables.signals.body,
-      tags: tables.signals.tags,
-      sources: tables.signals.sources,
-      approvedAt: tables.signals.approvedAt,
-    })
-    .from(tables.signals)
-    .where(and(eq(tables.signals.id, id), eq(tables.signals.status, "approved"), isNotNull(tables.signals.approvedAt)));
-
-  if (!signal?.approvedAt) return c.json(buildError("signal_not_found", `Signal with id ${id} not found`), 404);
-
-  const getSignalResponse = getSignalResponseSchema.parse({ ...signal, publishedAt: signal.approvedAt.toISOString() });
-
-  return c.json(getSignalResponse, 200);
-});
-
-/* ======================================== */
-
 /* ========== GET /api/signals/review ========== */
 const getSignalsForReviewRequestQuerySchema = z.object({
   beat: z.enum(beats).openapi({ description: "Filter by beat" }).optional(),
   status: signalStatusSchema.openapi({ description: "Filter by status" }).optional(),
-  page: z.int().min(1).default(1).openapi({ description: "Page" }),
-  limit: z.int().min(1).max(100).default(50).openapi({ description: "Limit per page" }),
+  page: z.coerce.number().int().min(1).default(1).openapi({ description: "Page" }),
+  limit: z.coerce.number().int().min(1).max(100).default(50).openapi({ description: "Limit per page" }),
 });
 const getSignalsForReviewResponseSchema = z.array(signalReviewSchema);
 
@@ -266,6 +194,78 @@ signalsHandlers.openapi(getSignalsForReview, async (c) => {
   );
 
   return c.json(getSignalsForReviewResponse, 200);
+});
+
+/* ======================================== */
+
+/* ========== GET /api/signals/:id ========== */
+const getSignalRequestParamSchema = z.object({
+  id: idSchema,
+});
+const getSignalResponseSchema = signalSchema;
+
+const getSignal = createRoute({
+  method: "get",
+  path: "/{id}",
+  description: "Get signal by id",
+  request: {
+    headers: paymentProofSchema,
+    params: getSignalRequestParamSchema,
+  },
+  middleware: [x402Payment({ price: "$0.01", description: "Get specific signal content" })],
+  responses: {
+    200: {
+      headers: paymentSettledSchema,
+      content: {
+        "application/json": {
+          schema: getSignalResponseSchema,
+        },
+      },
+      description: "Signal detail",
+    },
+    402: {
+      headers: paymentRequiredSchema,
+      description: "Payment required to access signal",
+    },
+    404: {
+      content: {
+        "application/json": {
+          schema: buildNotFoundErrorSchema("signal").default({
+            error: "signal_not_found",
+            message: "Signal with id X was not found",
+          }),
+        },
+      },
+      description: "Signal not found",
+    },
+  },
+  tags: [signal],
+});
+
+signalsHandlers.openapi(getSignal, async (c) => {
+  const { id } = c.req.valid("param");
+
+  const db = drizzle(c.env.LUMENS_DB);
+
+  const [signal] = await db
+    .select({
+      id: tables.signals.id,
+      correspondent: tables.signals.correspondent,
+      beat: tables.signals.beat,
+      headline: tables.signals.headline,
+      body: tables.signals.body,
+      tags: tables.signals.tags,
+      sources: tables.signals.sources,
+      approvedAt: tables.signals.approvedAt,
+    })
+    .from(tables.signals)
+    .where(and(eq(tables.signals.id, id), eq(tables.signals.status, "approved"), isNotNull(tables.signals.approvedAt)));
+
+  if (!signal?.approvedAt) return c.json(buildError("signal_not_found", `Signal with id ${id} not found`), 404);
+
+  const getSignalResponse = getSignalResponseSchema.parse({ ...signal, publishedAt: signal.approvedAt.toISOString() });
+
+  return c.json(getSignalResponse, 200);
 });
 
 /* ======================================== */
