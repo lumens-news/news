@@ -6,6 +6,14 @@ export const beatSchema = z.enum(beats).openapi("Beat");
 
 export const addressSchema = z.string().openapi("Address");
 
+export const stellarAuthSchema = z
+  .object({
+    "x-stellar-address": addressSchema,
+    "x-stellar-signature": z.base64(),
+    "x-stellar-timestamp": z.coerce.number().int(),
+  })
+  .openapi("StellarAuth");
+
 export const idSchema = z.uuidv7().openapi("ID", { example: "018f4f47-1f9d-7c13-bd3d-a2f5e857e5db" });
 
 export const paymentRequiredSchema = z

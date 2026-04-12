@@ -14,6 +14,7 @@
     "@lumens-news/types": "workspace:*",
     "@scalar/hono-api-reference": "0.10.6",
     "@scalar/openapi-to-markdown": "0.5.1",
+    "@stellar/stellar-sdk": "15.0.1",
     "@x402/core": "2.9.0",
     "@x402/hono": "2.9.0",
     "@x402/stellar": "2.9.0",

@@ -4,15 +4,17 @@ import { drizzle } from "drizzle-orm/d1";
 import { v7 } from "uuid";
 
 import type { Env } from "../config/env";
+import type { StellarAuthVariables } from "../middlewares/stellar-auth";
 import * as tables from "../lib/db";
 import { buildErrorSchema, buildNotFoundErrorSchema } from "../lib/openapi/errors";
-import { addressSchema, briefSchema, idSchema, paymentProofSchema, paymentRequiredSchema, paymentSettledSchema } from "../lib/openapi/schemas";
+import { briefSchema, idSchema, paymentProofSchema, paymentRequiredSchema, paymentSettledSchema, stellarAuthSchema } from "../lib/openapi/schemas";
 import { brief } from "../lib/openapi/tags";
 import { isEvaluator, onlyEvaluatorErrorCode, onlyEvaluatorErrorMessage } from "../middlewares/is-evaluator";
+import { invalidAuthSignatureErrorCode, invalidAuthSignatureErrorMessage, stellarAuth } from "../middlewares/stellar-auth";
 import { x402Payment } from "../middlewares/x402";
 import { buildError, internalServerError } from "../utils/error";
 
-const briefsHandlers = new OpenAPIHono<Env>();
+const briefsHandlers = new OpenAPIHono<Env & StellarAuthVariables>();
 
 /* ========== GET /api/briefs/:date ========== */
 const getBriefRequestParamSchema = z.object({
@@ -97,9 +99,6 @@ briefsHandlers.openapi(getBrief, async (c) => {
 /* ======================================== */
 
 /* ========== POST /api/briefs/compile ========== */
-const compileBriefRequestHeaderSchema = z.object({
-  "x-stellar-address": addressSchema,
-});
 const compileBriefRequestBodySchema = z.object({
   date: z.iso.date().openapi({ description: "Brief date, format: YYYY-MM-DD" }),
   signalIds: z.array(idSchema),
@@ -110,7 +109,7 @@ const compileBrief = createRoute({
   path: "/compile",
   description: "Compile brief (evaluator only)",
   request: {
-    headers: compileBriefRequestHeaderSchema,
+    headers: stellarAuthSchema,
     body: {
       content: {
         "application/json": {
@@ -119,7 +118,19 @@ const compileBrief = createRoute({
       },
     },
   },
-  middleware: [(c, next) => isEvaluator(c.req.header("x-stellar-address"))(c, next)],
+  middleware: [
+    (c, next) => {
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const address = c.req.header("x-stellar-address")!;
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const signature = c.req.header("x-stellar-signature")!;
+      // biome-ignore lint/style/noNonNullAssertion: validated through request schema
+      const timestamp = c.req.header("x-stellar-timestamp")!;
+
+      return stellarAuth({ address, signature, timestamp })(c, next);
+    },
+    (c, next) => isEvaluator(c.req.header("x-stellar-address"))(c, next),
+  ],
   responses: {
     201: {
       description: "Brief compiled successfully",
@@ -134,6 +145,21 @@ const compileBrief = createRoute({
           }),
         },
       },
+    },
+    401: {
+      content: {
+        "application/json": {
+          schema: buildErrorSchema(invalidAuthSignatureErrorCode).openapi({
+            examples: [
+              {
+                error: invalidAuthSignatureErrorCode,
+                message: invalidAuthSignatureErrorMessage,
+              },
+            ],
+          }),
+        },
+      },
+      description: "Compile brief authorization failed",
     },
     403: {
       content: {
@@ -166,7 +192,6 @@ const compileBrief = createRoute({
 });
 
 briefsHandlers.openapi(compileBrief, async (c) => {
-  const { "x-stellar-address": address } = c.req.valid("header");
   const { date, signalIds } = c.req.valid("json");
 
   const db = drizzle(c.env.LUMENS_DB);
@@ -188,7 +213,10 @@ briefsHandlers.openapi(compileBrief, async (c) => {
   const briefId = v7();
 
   const batchResult = await db.batch([
-    db.insert(tables.briefs).values({ id: briefId, date: resolvedDate, compiledBy: address }).onConflictDoNothing(),
+    db
+      .insert(tables.briefs)
+      .values({ id: briefId, date: resolvedDate, compiledBy: c.get("stellarAddress") })
+      .onConflictDoNothing(),
     ...signals.map(({ id: signalId }) => db.insert(tables.briefSignals).values({ briefId, signalId }).onConflictDoNothing()),
   ]);
 
